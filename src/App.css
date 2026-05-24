@@ -1,0 +1,390 @@
+/* ========================================================= */
+/* 0. 전역 초기화                                            */
+/* ========================================================= */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ========================================================= */
+/* 1. 움직이는 가우시안 블러 배경 화면 (버그 수정)            */
+/* ========================================================= */
+/* ========================================================= */
+/* 1. 동적 배경 화면 (안전 가속 크로스페이드)                */
+/* ========================================================= */
+.bg-slider-container {
+  position: fixed;
+  inset: -20px; /* 블러 테두리 깨짐 방지를 위해 컨테이너 자체를 확장 */
+  z-index: -1;
+  width: calc(100vw + 40px);
+  height: calc(100vh + 40px);
+  background-color: #1e3a2f00;
+  overflow: hidden;
+  
+  /* 🔥 [핵심 처방 1] 개별 이미지 레이어마다 블러를 주면 GPU 가속이 터집니다. */
+  /* 부모 컨테이너에서 한 번에 뭉뚱그려 필터를 걸어주는 것이 훨씬 가볍고 안전합니다. */
+  filter: blur(3px) brightness(0.75); 
+  transform: translateZ(0); /* 하드웨어 가속 강제 활성화 */
+}
+
+.bg-image-layer {
+  position: absolute;
+  inset: 0; 
+  width: 100%;
+  height: 100%;
+  
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  
+  /* 평소에는 완전히 투명하게 대기 및 아래층에 배치 */
+  opacity: 0;
+  z-index: 1;
+  
+  /* 1초 순환 타이머에 맞춰 투명도가 0.4초 동안 부드럽게 교차되도록 세팅 */
+  transition: opacity 5s ease-in-out; 
+  will-change: opacity; 
+}
+
+/* 🔥 [핵심 처방 2] 활성화된 레이어만 투명도를 채우고 최상단(z-index: 2)으로 인양 */
+.bg-image-layer.active {
+  opacity: 1;
+  z-index: 2;
+}
+.bg-image-layer:first-child:not(.active) {
+  opacity: 1;
+}
+/* ========================================================= */
+/* 2. 초록 파스텔 리퀴드 글래스 (Liquid Glass) 공통 규격     */
+/* ========================================================= */
+.liquid-glass-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 15px 35px rgba(10, 35, 20, 0.25), 
+    0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.liquid-glass-effect {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  filter: url(#glass-distortion);
+  scale: 1.03;
+}
+
+.liquid-glass-tint {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(
+    135deg, 
+    rgba(212, 239, 223, 0.35) 0%, 
+    rgba(163, 218, 182, 0.4) 50%, 
+    rgba(162, 217, 206, 0.35) 100%
+  );
+  background-size: 200% 200%;
+  animation: pastelPulse 12s ease infinite alternate;
+}
+
+@keyframes pastelPulse {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.liquid-glass-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: 
+    inset 4px 4px 4px rgba(255, 255, 255, 0.5),
+    inset -2px -2px 5px rgba(255, 255, 255, 0.15),
+    inset 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+.liquid-glass-content {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================================================= */
+/* 3. 내부 콘텐츠 레이아웃 (타자 연습기)                     */
+/* ========================================================= */
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* 좌측 리퀴드 사이드바 */
+.sidebar {
+  width: 270px;
+  height: 100vh;
+  border-radius: 0 24px 24px 0 !important;
+  border-left: none !important;
+  flex-shrink: 0;
+}
+
+.sidebar .liquid-glass-content {
+  padding: 40px 22px;
+}
+
+.sidebar-title {
+  font-size: 24px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 40px;
+  color: #1e4630;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+}
+
+.stat-group {
+  margin-bottom: 25px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 15px;
+}
+
+.stat-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: #000000;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.stat-lbl { color: #000000; }
+.stat-val { font-size: 18px; font-weight: 700; color: #000000; }
+
+.accuracy-bar-bg {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.accuracy-bar-fill {
+  height: 100%;
+  background-color: #27ae60;
+  transition: width 0.3s ease;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  font-size: 11px;
+  color: #48705a;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* 우측 콘텐츠 메인 영역 (키보드 잘림 방지 최적화) */
+.main-content {
+  flex: 1;
+  padding: 30px 40px 40px 40px; /* 하단 패널 안정성 확보를 위한 가운 패딩 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  height: 100vh;
+  overflow-y: auto; /* 창이 작아질 경우 스크롤 대응 */
+}
+
+.top-nav {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+.btn-lang {
+  padding: 6px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2);
+}
+
+.upload-toolbar {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+  flex-shrink: 0;
+}
+.upload-btn-lbl {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: #1e4630;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* 장문 연습 타자 출력창 */
+.text-window {
+  width: 100%;
+  max-width: 900px;
+  height: 200px;
+  overflow-y: auto;
+  padding: 20px;
+  flex-shrink: 0;
+}
+.text-window::-webkit-scrollbar { width: 6px; }
+.text-window::-webkit-scrollbar-thumb { background-color: rgba(39, 174, 96, 0.3); border-radius: 3px; }
+
+.text-line {
+  padding: 10px 16px;
+  font-size: 18px;
+  font-weight: 500;
+  color: rgba(45, 90, 67, 0.45);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: all 0.2s ease;
+}
+
+.text-line.active {
+  color: #0f2c1d;
+  background-color: rgba(163, 218, 182, 0.6);
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.15);
+  border-left: 4px solid #27ae60;
+}
+.text-line.passed { color: rgba(45, 90, 67, 0.2); }
+
+.char-correct { color: #1b4f72; font-weight: 700; }
+.char-incorrect { color: #922b21; background-color: rgba(242, 215, 213, 0.8); font-weight: 700; border-radius: 3px; }
+
+/* 텍스트 메인 입력박스 */
+.input-box {
+  width: 100%;
+  max-width: 900px;
+  padding: 16px 20px;
+  font-size: 18px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 12px;
+  outline: none;
+  background-color: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(10px);
+  color: #0f2c1d;
+  font-weight: 500;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.input-box:focus {
+  background-color: rgba(255, 255, 255, 0.85);
+  border-color: #27ae60;
+  box-shadow: 0 0 0 4px rgba(39, 174, 96, 0.2);
+}
+
+.input-box.shake {
+  border-color: #dc2626 !important;
+  background-color: rgba(254, 242, 242, 0.9);
+  animation: shakeEffect 0.4s cubic-bezier(.36, .07, .19, .97) both;
+}
+@keyframes shakeEffect {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+  40%, 60% { transform: translate3d(5px, 0, 0); }
+}
+
+/* ========================================================= */
+/* 4. 가상 리퀴드 키보드 레이아웃 (마진 및 높이 최적화)        */
+/* ========================================================= */
+.keyboard-panel {
+  padding: 20px;
+  max-width: 900px;
+  width: 100%;
+  flex-shrink: 0;
+  margin-bottom: 10px; /* 최하단 안전 여백 추가 */
+}
+.keyboard-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 7px;
+  justify-content: center;
+}
+.keyboard-row button {
+  height: 46px; /* 키 버튼 높이 소폭 확장 */
+  width: 44px;
+  background-color: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e4630;
+  cursor: pointer;
+  border-bottom: 3px solid rgba(45, 90, 67, 0.3);
+  transition: all 0.05s ease;
+}
+
+.keyboard-row button.pressed {
+  transform: translateY(3px);
+  border-bottom: 0px solid transparent;
+  background-color: #27ae60;
+  color: white;
+  border-color: #1e7e43;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* 특수 키 너비 세팅 */
+.k-back { width: 92px !important; }
+.k-tab { width: 72px !important; }
+.k-cap { width: 80px !important; }
+.k-enter { width: 84px !important; }
+.k-shift { width: 108px !important; }
+.k-space { width: 310px !important; }
+.k-mod { width: 48px !important; }
+
+/* 결과 리셋 카드 */
+.result-box {
+  width: 100%;
+  max-width: 500px;
+  padding: 40px;
+  text-align: center;
+  margin: auto;
+}
+.result-box h2 { color: #0f2c1d; margin-bottom: 15px; }
+.result-box p { color: #2d5a43; font-size: 16px; margin: 8px 0; }
+.text-window .liquid-glass-content {
+  overflow: hidden !important; /* 마우스 휠, 스크롤바 생성 방지 */
+  overscroll-behavior: none;   /* 모바일 터치 및 트랙패드 튕김 제스처 방지 */
+}
+
+/* (선택) 혹시 text-window 자체에 스크롤바가 생기는 것도 이중 방어 */
+.text-window {
+  overflow: hidden !important;
+}
