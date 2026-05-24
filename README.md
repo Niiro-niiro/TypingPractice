@@ -4,6 +4,10 @@ Typing Practice
 A React-based typing practice app featuring a modern **Liquid Glass UI** and support for loading custom `.txt` files.  
 Practice typing with any text you want — books, notes, lyrics, or your own writing.
 
+[Typing Practice App][project-link]
+
+[project-link]: https://typing-practice-teal.vercel.app/ "Active Link"
+
 ## 🛠 Tech Stack
 
 | 분류 | 기술 |
