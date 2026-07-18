@@ -3,10 +3,10 @@ import Hangul from "hangul-js";
 import "./App.css";
 
 const DEFAULT_SAMPLE = [
-  "드넓은 저 우주를 한없이 맴도는 행성을 스쳐가며",
-  "지나왔던 우리 흔적들은 저 별들이 따라갈 앞길이 될 거야",
-  "망설이는 너의 그 마음을 이끌어 주고 싶어",
-  "소중하게 품어온 꿈들을 이어주는 유성우"
+  "태초에 하나님이 천지를 창조하시니라",
+  "그 땅이 혼돈하고 공허하며 흑암이 깊음 위에 있고 하나님의 영은 수면 위에 운행하시니라",
+  "하나님이 이르시되 빛이 있으라 하시니 빛이 있었고",
+  "그 빛이 하나님이 보시기에 좋았더라 하나님이 빛과 어둠을 나누사"
 ];
 
 const BACKGROUND_IMAGES = [
@@ -17,37 +17,36 @@ const BACKGROUND_IMAGES = [
 ];
 
 export default function App() {
-  // 매핑 테이블을 컴포넌트 상단으로 이동
-  const hangulToEngMap = {
-    'ㅂ': 'q', 'ㅈ': 'w', 'ㄷ': 'e', 'ㄱ': 'r', 'ㅅ': 't', 
-    'ㅛ': 'y', 'ㅕ': 'u', 'ㅑ': 'i', 'ㅐ': 'o', 'ㅔ': 'p',
-    'ㅁ': 'a', 'ㄴ': 's', 'ㅇ': 'd', 'ㄹ': 'f', 'ㅎ': 'g', 
-    'ㅗ': 'h', 'ㅓ': 'j', 'ㅏ': 'k', 'ㅣ': 'l',
-    'ㅋ': 'z', 'ㅌ': 'x', 'ㅊ': 'c', 'ㅍ': 'v', 'ㅠ': 'b', 'ㅜ': 'n', 'ㅡ': 'm'
+  const codeToKeyMap = {
+  'KeyQ': 'q', 'KeyW': 'w', 'KeyE': 'e', 'KeyR': 'r', 'KeyT': 't',
+  'KeyY': 'y', 'KeyU': 'u', 'KeyI': 'i', 'KeyO': 'o', 'KeyP': 'p',
+  'KeyA': 'a', 'KeyS': 's', 'KeyD': 'd', 'KeyF': 'f', 'KeyG': 'g',
+  'KeyH': 'h', 'KeyJ': 'j', 'KeyK': 'k', 'KeyL': 'l',
+  'KeyZ': 'z', 'KeyX': 'x', 'KeyC': 'c', 'KeyV': 'v', 'KeyB': 'b', 'KeyN': 'n', 'KeyM': 'm'
   };
 
-  const [textData, setTextData] = useState(DEFAULT_SAMPLE);
-  const [fileName, setFileName] = useState("유성우-StelLive Cliché");
+  const [textData] = useState(DEFAULT_SAMPLE);
   const [currentLineIdx, setCurrentLineIdx] = useState(0);
   const [input, setInput] = useState("");
   const [isStarted, setIsStarted] = useState(false);
-  const [startTime, setStartTime] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [totalKeystrokes, setTotalKeystrokes] = useState(0);
   const [cpm, setCpm] = useState(0);
-  const [accuracyList, setAccuracyList] = useState([]); 
-  const [wrongCount, setWrongCount] = useState(0); 
+  const [accuracyList, setAccuracyList] = useState([]);
+  const [totalWrongCount, setTotalWrongCount] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   const [activeKeys, setActiveKeys] = useState(new Set());
   const [bgIndex, setBgIndex] = useState(0);
   const [isComposing, setIsComposing] = useState(false);
+  const [wrongIndices, setWrongIndices] = useState(new Set());
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const inputRef = useRef(null);
-  const lineRefs = useRef([]);
   const timerRef = useRef(null);
 
   const currentTargetText = textData[currentLineIdx] || "";
+  const totalAccuracy = accuracyList.length > 0 ? Math.round(accuracyList.reduce((a, b) => a + b, 0) / accuracyList.length) : 100;
 
   useEffect(() => {
     const bgTimer = setInterval(() => {
@@ -57,401 +56,257 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isStarted && elapsedSeconds > 0) {
-      // 타수 공식: (총 입력 자소 수 / 경과 시간(분))
-      const cpmValue = Math.round((totalKeystrokes / (elapsedSeconds / 60)));
-      setCpm(isNaN(cpmValue) ? 0 : cpmValue);
-    }
-  }, [totalKeystrokes, elapsedSeconds, isStarted]);
-
-  useEffect(() => {
     if (isStarted && !isFinished) {
       timerRef.current = setInterval(() => {
         setElapsedSeconds((prev) => prev + 1);
+        const cpmValue = Math.round((totalKeystrokes / ((elapsedSeconds + 1) / 60)));
+        setCpm(isNaN(cpmValue) ? 0 : cpmValue);
       }, 1000);
     } else {
       clearInterval(timerRef.current);
     }
     return () => clearInterval(timerRef.current);
-  }, [isStarted, isFinished]);
+  }, [isStarted, isFinished, totalKeystrokes, elapsedSeconds]);
 
-  useEffect(() => {
-    if (lineRefs.current[currentLineIdx]) {
-      lineRefs.current[currentLineIdx].scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [currentLineIdx, textData]);
+  
+  const progress = Math.round(((currentLineIdx) / textData.length) * 100);
+
+const getPhysicalKey = (code) => {
+    if (code.startsWith('Key')) return code.replace('Key', '').toLowerCase();
+    if (code.startsWith('Digit')) return code.replace('Digit', '');
+    return code.toLowerCase(); // Enter, Space, Backspace 등
+  };
+
+  const renderTargetText = () => {
+    return currentTargetText.split('').map((char, i) => {
+      // 오타 여부 판별
+      const isWrong = wrongIndices.has(i);
+      const isPassed = i < input.length;
+
+      let className = "";
+      if (isWrong) {
+        className = "char-wrong";
+      } else if (isPassed) {
+        className = "char-correct";
+      } else if (i === input.length) {
+        className = "char-pending";
+      } else {
+        className = "char-future";
+      }
+      
+      return <span key={i} className={className}>{char}</span>;
+    });
+  };
 
   const handleKeyDown = (e) => {
+    // 1. 기본 키보드 이벤트 무시 처리
     if (e.key === "Tab") e.preventDefault();
-
-    let keyKey = e.key.toLowerCase();
-    if (hangulToEngMap[e.key]) keyKey = hangulToEngMap[e.key];
-    setActiveKeys((prev) => new Set(prev).add(keyKey));
-
-    if (isComposing) return;
     
-    if (e.key === "Enter") {
+    // 2. 키보드 시각 효과 처리
+    const physicalKey = getPhysicalKey(e.code);
+    setActiveKeys((prev) => new Set(prev).add(physicalKey));
+
+    // 3. 엔터 처리 로직 (중복 입력 방지 및 비동기 처리)
+    if (e.code === "Enter") {
       e.preventDefault();
-      if (input.length === 0) return;
-
-      const inputDisassembled = Hangul.disassemble(input);
-      const targetDisassembled = Hangul.disassemble(currentTargetText);
       
-      const isCorrect = inputDisassembled.length === targetDisassembled.length && 
-                        inputDisassembled.every((letter, idx) => letter === targetDisassembled[idx]);
-
-      if (!isCorrect) {
-        setIsShaking(true);
-        setWrongCount((prev) => prev + 1);
-        setTimeout(() => setIsShaking(false), 400);
-        return;
+      // 이미 처리 중이면 아무것도 하지 않음 (두 줄 넘김 방지)
+      if (isProcessing) return;
+      
+      setIsProcessing(true); // [락 활성화]
+      
+      // 조합 중이라면 종료 처리
+      if (isComposing) {
+        setIsComposing(false);
       }
 
-      // 정답 로직
-      let correctCount = 0;
-      input.split("").forEach((char, index) => {
-        if (char === currentTargetText[index]) correctCount++;
-      });
-      const lineAccuracy = Math.round((correctCount / currentTargetText.length) * 100);
-      setAccuracyList([...accuracyList, lineAccuracy]);
-      setTotalKeystrokes((prev) => prev + inputDisassembled.length);
+      // [핵심] 리액트가 마지막 글자를 input 상태에 반영할 시간을 줌
+      setTimeout(() => {
+        // 처리 시작 후 조건이 안 맞으면 다시 락을 풀어야 함
+        if (input.length === 0) {
+          setIsProcessing(false);
+          return;
+        }
 
-      if (currentLineIdx < textData.length - 1) {
-        setCurrentLineIdx((prev) => prev + 1);
-        setInput(""); 
-      } else {
-        setIsFinished(true);
-        setIsStarted(false);
-      }
+        // 분해 비교를 통한 검증
+        const inputDisassembled = Hangul.disassemble(input);
+        const targetDisassembled = Hangul.disassemble(currentTargetText);
+        const isCorrect = inputDisassembled.length === targetDisassembled.length && 
+                          inputDisassembled.every((l, i) => l === targetDisassembled[i]);
+
+        // 오타가 있을 경우 흔들림 효과 (실패 시 락 해제)
+        if (!isCorrect) {
+          setIsShaking(true);
+          setTimeout(() => setIsShaking(false), 400);
+          setIsProcessing(false); // [락 해제]
+          return;
+        }
+
+        // 정확도 계산 및 상태 업데이트
+        let correctCount = 0;
+        input.split("").forEach((char, index) => {
+          if (char === currentTargetText[index]) correctCount++;
+        });
+        const lineAccuracy = Math.round((correctCount / currentTargetText.length) * 100);
+
+        setAccuracyList((prev) => [...prev, lineAccuracy]);
+        setTotalKeystrokes((prev) => prev + inputDisassembled.length);
+        setWrongIndices(new Set()); // 오타 초기화
+
+        // 줄 넘김 처리
+        if (currentLineIdx < textData.length - 1) {
+          setInput(""); 
+          setCurrentLineIdx((prev) => prev + 1);
+          if (inputRef.current) inputRef.current.value = "";
+          
+          // 줄이 바뀌었으므로 락 해제
+          setIsProcessing(false);
+        } else {
+          setIsFinished(true);
+          setIsStarted(false);
+          // 종료 시에도 락 해제
+          setIsProcessing(false);
+        }
+      }, 0);
+      
+      return; 
     }
   };
 
   const handleKeyUp = (e) => {
-    let keyKey = e.key.toLowerCase();
-    if (hangulToEngMap[e.key]) keyKey = hangulToEngMap[e.key];
+    const physicalKey = getPhysicalKey(e.code);
     setActiveKeys((prev) => {
       const next = new Set(prev);
-      next.delete(keyKey);
+      next.delete(physicalKey);
       return next;
     });
   };
 
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setInput(val);
-    if (!isStarted && val.length > 0) {
-    setIsStarted(true);
-    setStartTime(Date.now()); // 시간 측정 시작
-    }
-    if (val.length > 0) {
-      const inputDisassembled = Hangul.disassemble(val);
-      const targetDisassembled = Hangul.disassemble(currentTargetText);
-      const targetChunk = targetDisassembled.slice(0, inputDisassembled.length);
-      if (inputDisassembled.some((letter, index) => letter !== targetChunk[index])) {
-        setIsShaking(true);
-        setWrongCount((prev) => prev + 1);
-        setTimeout(() => setIsShaking(false), 400);
+  const handleCompositionEnd = (e) => {
+    setIsComposing(false);
+    const completedWord = e.target.value; // 완성된 텍스트
+    const lastIdx = completedWord.length - 1; // 방금 완성된 글자의 인덱스
+
+    // 방금 완성된 글자가 정답과 다른지 확인
+    if (lastIdx >= 0 && lastIdx < currentTargetText.length) {
+      if (completedWord[lastIdx] !== currentTargetText[lastIdx]) {
+        console.log("오타 적립 성공! 위치:", lastIdx);
+        setTotalWrongCount((prev) => prev + 1);
+        setWrongIndices((prev) => new Set([...prev, lastIdx]));
       }
     }
   };
 
-  const resetPracticeState = () => {
-    setCurrentLineIdx(0);
-    setInput("");
-    setIsStarted(false);
-    setStartTime(null);
-    setElapsedSeconds(0);
-    setTotalKeystrokes(0);
-    setCpm(0);
-    setAccuracyList([]);
-    setWrongCount(0);
-    setIsFinished(false);
-    setActiveKeys(new Set());
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    const oldLength = input.length;
+    const newLength = newValue.length;
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target.result;
-      const parsedLines = content.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
-      setTextData(parsedLines);
-      setFileName(file.name);
-      resetPracticeState();
-    };
-    reader.readAsText(file, "UTF-8");
-  };
+    // 1. 글자가 지워졌을 때 (Backspace)
+    if (newLength < oldLength) {
+      const deletedIdx = newLength; // 지워진 자리의 인덱스
+      
+      // 지워진 자리가 오타 리스트에 있었다면?
+      if (wrongIndices.has(deletedIdx)) {
+        console.log("오타 복구! 인덱스:", deletedIdx);
+        
+        // 오타 카운트 차감
+        setTotalWrongCount((prev) => Math.max(0, prev - 1));
+        
+        // 오타 리스트에서 제거
+        setWrongIndices((prev) => {
+          const next = new Set(prev);
+          next.delete(deletedIdx);
+          return next;
+        });
+      }
+    }
 
-  const totalAccuracy = accuracyList.length > 0 ? Math.round(accuracyList.reduce((a, b) => a + b, 0) / accuracyList.length) : 100;
-  const formatTime = (seconds) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
-  const keyClass = (keyToken) => {
-  // 1. 영어 키 자체를 눌렀을 때
-    if (activeKeys.has(keyToken)) return "pressed";
+  // 2. 글자가 추가되었을 때 (이미 있는 onCompositionEnd 로직과 병행)
+  // ... 여기는 기존처럼 입력만 담당 ...
+  
+  setInput(newValue);
+  if (!isStarted) setIsStarted(true);
+};
+
+  useEffect(() => {
+    setInput(""); // 1. 입력창 비움
+    setWrongIndices(new Set()); // 2. 오타 정보도 초기화
     
-    // 2. 한글 키를 눌렀을 때 영어 키로 매핑해서 체크
-    // (예: 'ㅂ'이 눌렸으면, 'q'가 pressed인지 확인)
-    const hangulKey = Object.keys(hangulToEngMap).find(key => hangulToEngMap[key] === keyToken);
-    if (hangulKey && activeKeys.has(hangulKey)) return "pressed";
-    
-    return "";
-  };
+    // 3. 강제 포커스
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [currentLineIdx]);
+
+  const keyClass = (keyToken) => activeKeys.has(keyToken.toLowerCase()) ? "pressed" : "";
+
   return (
     <div className="app-container">
-      
-      {/* 1. 배경 컴포넌트 (렌더링 강제 고정 구조) */}
+      <div className="top-menu-bar">
+        <div className="menu-left">타자 연습</div>
+        <div className="menu-right">
+          <span>타수: <strong>{cpm}</strong></span>
+          <span>오타율: <strong>{isNaN(totalWrongCount) ? 0 : totalWrongCount}%</strong></span>
+          <span>진행도: <strong>{progress}%</strong></span>
+        </div>
+      </div>
       <div className="bg-slider-container">
-        {BACKGROUND_IMAGES.map((src, idx) => {
-          const isActive = idx === bgIndex;
-          return (
-            <div
-              key={`bg-layer-${idx}`}
-              className={`bg-image-layer ${isActive ? "active" : ""}`}
-              style={{ backgroundImage: `url(${src})` }}
-            />
-          );
-        })}
+        {BACKGROUND_IMAGES.map((src, idx) => (
+          <div key={idx} className={`bg-image-layer ${idx === bgIndex ? "active" : ""}`} style={{ backgroundImage: `url(${src})` }} />
+        ))}
       </div>
 
-      {/* 2. LEFT SIDEBAR */}
-      <div className="liquid-glass-panel sidebar">
-        <div className="liquid-glass-effect"></div>
-        <div className="liquid-glass-tint"></div>
-        <div className="liquid-glass-shine"></div>
-        <div className="liquid-glass-content">
-          <h3 className="sidebar-title">장문연습</h3>
-          
-          <div className="stat-group">
-            <div className="stat-header">⏱️ 진행 정보</div>
-            <div className="stat-item">
-              <span className="stat-lbl">진행시간</span>
-              <span className="stat-val">{formatTime(elapsedSeconds)}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-lbl">진행도</span>
-              <span className="stat-val">{currentLineIdx + 1} / {textData.length}</span>
-            </div>
-          </div>
-
-          <div className="stat-group">
-            <div className="stat-header">📈 속도 및 정확도</div>
-            <div className="stat-item">
-              <span className="stat-lbl">타수(타/분)</span>
-              <span className="stat-val">{cpm}</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-lbl">정확도(%)</span>
-              <span className="stat-val">{totalAccuracy}%</span>
-            </div>
-            <div className="accuracy-bar-bg">
-              <div className="accuracy-bar-fill" style={{ width: `${totalAccuracy}%` }}></div>
-            </div>
-          </div>
-
-          <div className="stat-group">
-            <div className="stat-header">⚠️ 실시간 분석</div>
-            <div className="stat-item">
-              <span className="stat-lbl">누적 오타수</span>
-              <span className="stat-val" style={{ color: wrongCount > 0 ? '#922b21' : '#0f2c1d' }}>{wrongCount}</span>
-            </div>
-          </div>
-
-          <div className="sidebar-footer">
-            문서 소스: <br /><strong>{fileName}</strong>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. RIGHT MAIN CONTENT */}
       <div className="main-content">
-        <div className="top-nav">
-          <button className="btn-lang">한국어</button>
-        </div>
-
-        <div className="liquid-glass-panel upload-toolbar">
-          <div className="liquid-glass-effect"></div>
-          <div className="liquid-glass-tint"></div>
-          <div className="liquid-glass-shine"></div>
-          <div className="liquid-glass-content" style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '14px', color: '#1e4630', fontWeight: 600 }}>커스텀 타자 파일 연동</span>
-            <label htmlFor="txt-file" className="upload-btn-lbl">파일 업로드</label>
-            <input type="file" id="txt-file" accept=".txt" onChange={handleFileUpload} style={{ display: "none" }} />
-          </div>
-        </div>
-
         {isFinished ? (
-          <div className="liquid-glass-panel result-box">
-            <div className="liquid-glass-effect"></div>
-            <div className="liquid-glass-tint"></div>
-            <div className="liquid-glass-shine"></div>
-            <div className="liquid-glass-content">
-              <h2>🎉 타자 연습 완료!</h2>
-              <p>평균 속도: <strong>{cpm} 타</strong></p>
-              <p>최종 정확도: <strong>{totalAccuracy}%</strong></p>
-              <p>누적 오타: <strong style={{ color: '#922b21' }}>{wrongCount}회</strong></p>
-              <button onClick={resetPracticeState} className="btn-lang" style={{ marginTop: '20px', padding: '10px 24px' }}>다시 하기</button>
-            </div>
+          <div className="result-box">
+            <h2> 타자 연습 완료!</h2>
+            <p>평균 속도: <strong>{cpm} 타</strong></p>
+            <p>최종 정확도: <strong>{totalAccuracy}%</strong></p>
+            <button onClick={() => window.location.reload()}>다시 하기</button>
           </div>
         ) : (
           <>
-            <div className="liquid-glass-panel text-window">
-              <div className="liquid-glass-effect"></div>
-              <div className="liquid-glass-tint"></div>
-              <div className="liquid-glass-shine"></div>
-              <div className="liquid-glass-content">
-                {textData.map((line, lIdx) => {
-                  const isCurrent = lIdx === currentLineIdx;
-                  const isPassed = lIdx < currentLineIdx;
-                  let lineClass = "text-line";
-                  if (isCurrent) lineClass += " active";
-                  if (isPassed) lineClass += " passed";
-
-                  return (
-                    <div key={lIdx} ref={(el) => (lineRefs.current[lIdx] = el)} className={lineClass}>
-                      {isCurrent ? (
-                        line.split("").map((char, cIdx) => {
-                          let charClass = "";
-                          if (cIdx < input.length) {
-                            charClass = char === input[cIdx] ? "char-correct" : "char-incorrect";
-                          }
-                          return <span key={cIdx} className={charClass}>{char}</span>;
-                        })
-                      ) : (
-                        <span>{line}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="text-window">
+              {textData.map((line, idx) => (
+                <div key={idx} className={`text-line ${idx === currentLineIdx ? "active" : ""}`}>
+                  {idx === currentLineIdx ? renderTargetText() : line}
+                </div>
+              ))}
             </div>
-
-            <input
-              ref={inputRef}
-              type="text"
+            <input 
+              ref={inputRef} 
+              key={currentLineIdx}
+              className={`input-box ${isShaking ? "shake" : ""}`} 
               value={input}
+              autoComplete="off"
+              spellCheck="false"
               onChange={handleInputChange}
-              // [수정된 부분 시작]
-              onCompositionStart={() => setIsComposing(true)}
-              onCompositionEnd={() => setIsComposing(false)}
-              onKeyDown={(e) => {
-                // 글자 조합 중일 때는 엔터 로직이 실행되지 않게 막음
-                if (e.key === "Enter" && isComposing) {
-                  e.preventDefault();
-                  return;
-                }
-                handleKeyDown(e);
-              }}
-              // [수정된 부분 끝]
-              placeholder="하이라이트된 파스텔 그린 바의 문장을 입력한 후 엔터를 치세요."
+              onKeyDown={handleKeyDown} 
               onKeyUp={handleKeyUp}
-              className={`input-box ${isShaking ? "shake" : ""}`}
-              autoFocus
+              onCompositionStart={() => setIsComposing(true)} 
+              onCompositionEnd={handleCompositionEnd}
             />
-
-            {/* 가상 키보드 패널 */}
-            <div className="liquid-glass-panel keyboard-panel">
-              <div className="liquid-glass-effect"></div>
-              <div className="liquid-glass-tint"></div>
-              <div className="liquid-glass-shine"></div>
-              <div className="liquid-glass-content">
-                {/* Row 1 */}
-                <div className="keyboard-row">
-                  <button className={keyClass("~")}>~</button>
-                  <button className={keyClass("1")}>1</button>
-                  <button className={keyClass("2")}>2</button>
-                  <button className={keyClass("3")}>3</button>
-                  <button className={keyClass("4")}>4</button>
-                  <button className={keyClass("5")}>5</button>
-                  <button className={keyClass("6")}>6</button>
-                  <button className={keyClass("7")}>7</button>
-                  <button className={keyClass("8")}>8</button>
-                  <button className={keyClass("9")}>9</button>
-                  <button className={keyClass("0")}>0</button>
-                  <button className={keyClass("-")}>-</button>
-                  <button className={keyClass("=")}>=</button>
-                  <button className={`k-back ${keyClass("backspace")}`}>Backspace</button>
-                </div>
-                {/* Row 2 */}
-                <div className="keyboard-row">
-                  <button className={`k-tab ${keyClass("tab")}`}>Tab</button>
-                  <button className={keyClass("q")}>Q</button>
-                  <button className={keyClass("w")}>W</button>
-                  <button className={keyClass("e")}>E</button>
-                  <button className={keyClass("r")}>R</button>
-                  <button className={keyClass("t")}>T</button>
-                  <button className={keyClass("y")}>Y</button>
-                  <button className={keyClass("u")}>U</button>
-                  <button className={keyClass("i")}>I</button>
-                  <button className={keyClass("o")}>O</button>
-                  <button className={keyClass("p")}>P</button>
-                  <button className={keyClass("[")}>[</button>
-                  <button className={keyClass("]")}>]</button>
-                  <button className={keyClass("\\")}>\</button>
-                </div>
-                {/* Row 3 */}
-                <div className="keyboard-row">
-                  <button className={`k-cap ${keyClass("capslock")}`}>Caps</button>
-                  <button className={keyClass("a")}>A</button>
-                  <button className={keyClass("s")}>S</button>
-                  <button className={keyClass("d")}>D</button>
-                  <button className={keyClass("f")}>F</button>
-                  <button className={keyClass("g")}>G</button>
-                  <button className={keyClass("h")}>H</button>
-                  <button className={keyClass("j")}>J</button>
-                  <button className={keyClass("k")}>K</button>
-                  <button className={keyClass("l")}>L</button>
-                  <button className={keyClass(";")}>;</button>
-                  <button className={keyClass("'")}>'</button>
-                  <button className={`k-enter ${keyClass("enter")}`}>Enter</button>
-                </div>
-                {/* Row 4 */}
-                <div className="keyboard-row">
-                  <button className={`k-shift ${keyClass("shift")}`}>Shift</button>
-                  <button className={keyClass("z")}>Z</button>
-                  <button className={keyClass("x")}>X</button>
-                  <button className={keyClass("c")}>C</button>
-                  <button className={keyClass("v")}>V</button>
-                  <button className={keyClass("b")}>B</button>
-                  <button className={keyClass("n")}>N</button>
-                  <button className={keyClass("m")}>M</button>
-                  <button className={keyClass(",")}>,</button>
-                  <button className={keyClass(".")}>.</button>
-                  <button className={keyClass("/")}>/</button>
-                  <button className={`k-shift ${keyClass("shift")}`}>Shift</button>
-                </div>
-                {/* Row 5 */}
-                <div className="keyboard-row">
-                  <button className={`k-mod ${keyClass("control")}`}>Ctrl</button>
-                  <button className={`k-mod ${keyClass("alt")}`}>Alt</button>
-                  <button className={`k-space ${keyClass(" ")}`}>Space</button>
-                  <button className={`k-mod ${keyClass("alt")}`}>Alt</button>
-                  <button className={`k-mod ${keyClass("control")}`}>Ctrl</button>
-                </div>
+            <div className="keyboard-panel">
+              <div className="keyboard-row">
+                <button className={keyClass("`")}>`</button><button className={keyClass("1")}>1</button><button className={keyClass("2")}>2</button><button className={keyClass("3")}>3</button><button className={keyClass("4")}>4</button><button className={keyClass("5")}>5</button><button className={keyClass("6")}>6</button><button className={keyClass("7")}>7</button><button className={keyClass("8")}>8</button><button className={keyClass("9")}>9</button><button className={keyClass("0")}>0</button><button className={keyClass("-")}>-</button><button className={keyClass("=")}>=</button><button className={`k-back ${keyClass("backspace")}`}>Back</button>
+              </div>
+              <div className="keyboard-row">
+                <button className={`k-tab ${keyClass("tab")}`}>Tab</button><button className={keyClass("q")}>ㅂ</button><button className={keyClass("w")}>ㅈ</button><button className={keyClass("e")}>ㄷ</button><button className={keyClass("r")}>ㄱ</button><button className={keyClass("t")}>ㅛ</button><button className={keyClass("y")}>ㅛ</button><button className={keyClass("u")}>ㅕ</button><button className={keyClass("i")}>ㅑ</button><button className={keyClass("o")}>ㅐ</button><button className={keyClass("p")}>ㅔ</button><button className={keyClass("[")}>[</button><button className={keyClass("]")}>]</button><button className={keyClass("\\")}>\</button>
+              </div>
+              <div className="keyboard-row">
+                <button className={`k-cap ${keyClass("capslock")}`}>Caps</button><button className={keyClass("a")}>ㅁ</button><button className={keyClass("s")}>ㄴ</button><button className={keyClass("d")}>ㅇ</button><button className={keyClass("f")}>ㄹ</button><button className={keyClass("g")}>ㅎ</button><button className={keyClass("h")}>ㅗ</button><button className={keyClass("j")}>ㅓ</button><button className={keyClass("k")}>ㅏ</button><button className={keyClass("l")}>ㅣ</button><button className={keyClass(";")}>;</button><button className={keyClass("'")}>'</button><button className={`k-enter ${keyClass("enter")}`}>Enter</button>
+              </div>
+              <div className="keyboard-row">
+                <button className={`k-shift ${keyClass("shift")}`}>Shift</button><button className={keyClass("z")}>ㅋ</button><button className={keyClass("x")}>ㅌ</button><button className={keyClass("c")}>ㅊ</button><button className={keyClass("v")}>ㅍ</button><button className={keyClass("b")}>ㅠ</button><button className={keyClass("n")}>ㅜ</button><button className={keyClass("m")}>ㅡ</button><button className={keyClass(",")}>,</button><button className={keyClass(".")}>.</button><button className={keyClass("/")}>/</button><button className={`k-shift ${keyClass("shift")}`}>Shift</button>
+              </div>
+              <div className="keyboard-row">
+                <button className={`k-mod ${keyClass("control")}`}>Ctrl</button><button className={`k-mod ${keyClass("alt")}`}>Alt</button><button className={`k-space ${keyClass(" ")}`}>Space</button><button className={`k-mod ${keyClass("alt")}`}>Alt</button><button className={`k-mod ${keyClass("control")}`}>Ctrl</button>
               </div>
             </div>
           </>
         )}
       </div>
-
-      {/* SVG 왜곡 필터 */}
-      <svg style={{ display: "none" }}>
-        <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
-          <feTurbulence type="fractalNoise" baseFrequency="0.01 0.01" numOctaves="1" seed="5" result="turbulence" />
-          <feComponentTransfer in="turbulence" result="mapped">
-            <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
-            <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
-            <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
-          </feComponentTransfer>
-          <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
-          <feSpecularLighting in="softMap" surfaceScale="5" specularConstant="1" specularExponent="100" lightingColor="white" result="specLight">
-            <fePointLight x="-200" y="-200" z="300" />
-          </feSpecularLighting>
-          <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage" />
-          <feDisplacementMap in="SourceGraphic" in2="softMap" scale="30" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </svg>
-      
     </div>
   );
 }
