@@ -105,3 +105,255 @@ body { font-family: sans-serif; background-color: #f4f7f6; color: #333; }
 .char-correct { color: black; }
 .char-pending { background-color: #ffd700; } /* 잘 보이게 노란색 강조 */
 .char-future { color: #cccccc; }
+.text-line {
+  text-align: center; /* 텍스트를 가운데로 정렬 */
+}
+/* 레이아웃 2열(사이드바 + 메인) 배치 */
+.main-content {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  align-items: flex-start;
+}
+
+/* 왼쪽 사이드바 박스 */
+.sidebar-box {
+  width: 250px;
+  min-width: 250px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+  border-bottom: 2px solid #4a90e2;
+  padding-bottom: 8px;
+}
+
+/* txt 업로드 커스텀 버튼 */
+.file-upload-button {
+  display: block;
+  text-align: center;
+  background-color: #4a90e2;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.file-upload-button:hover {
+  background-color: #357abd;
+}
+
+/* 정보 목록 디자인 */
+.file-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: white;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.info-label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.info-value {
+  font-weight: bold;
+  color: #212529;
+}
+
+.file-name {
+  max-width: 130px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 오른쪽 타자 영역 */
+.workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+/* ==========================================
+   🎉 결과 상자 (Result Box) 스타일 & 폭죽 연출
+   ========================================== */
+
+.result-box {
+  position: relative;
+  overflow: hidden;
+  max-width: 420px;
+  margin: 40px auto;
+  padding: 40px 30px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12), 
+              0 0 0 1px rgba(74, 144, 226, 0.15);
+  text-align: center;
+  animation: resultPopIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* 등장 애니메이션 */
+@keyframes resultPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.result-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #2c3e50;
+  margin-bottom: 25px;
+  letter-spacing: -0.5px;
+}
+
+/* 통계 카드 2열 배치 */
+.result-stats {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #3b82f6;
+}
+
+.stat-value small {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* 다시 하기 버튼 */
+.restart-button {
+  width: 100%;
+  padding: 14px 20px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+}
+
+.restart-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45);
+}
+
+.restart-button:active {
+  transform: translateY(0);
+}
+
+/* ------------------------------------------
+   🎊 폭죽(Confetti) 애니메이션
+   ------------------------------------------ */
+
+.confetti-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  opacity: 0;
+  border-radius: 2px;
+  animation: confettiBurst 2.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+/* 폭죽 조각별 위치, 색상, 타이밍 분산 */
+.c1  { left: 15%; background: #ff4757; animation-delay: 0.1s; }
+.c2  { left: 25%; background: #2ed573; animation-delay: 0.3s; }
+.c3  { left: 35%; background: #ffa502; animation-delay: 0.2s; }
+.c4  { left: 45%; background: #1e90ff; animation-delay: 0.4s; }
+.c5  { left: 55%; background: #ff6b81; animation-delay: 0.1s; }
+.c6  { left: 65%; background: #70a1ff; animation-delay: 0.5s; }
+.c7  { left: 75%; background: #eccc68; animation-delay: 0.2s; }
+.c8  { left: 85%; background: #a29bfe; animation-delay: 0.3s; }
+.c9  { left: 20%; background: #ff7f50; animation-delay: 0.6s; }
+.c10 { left: 50%; background: #00d2d3; animation-delay: 0.7s; }
+.c11 { left: 70%; background: #ff6b6b; animation-delay: 0.5s; }
+.c12 { left: 80%; background: #54a0ff; animation-delay: 0.4s; }
+
+/* 튀어 오르며 회전하면서 떨어지는 애니메이션 */
+@keyframes confettiBurst {
+  0% {
+    top: 90%;
+    opacity: 1;
+    transform: scale(1) rotate(0deg) translateX(0);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.2) rotate(180deg) translateX(var(--drift, 20px));
+  }
+  100% {
+    top: -20%;
+    opacity: 0;
+    transform: scale(0.6) rotate(720deg) translateX(var(--drift, -40px));
+  }
+}
