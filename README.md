@@ -17,3 +17,8 @@ A typing practice app
 | **Styling** | Tailwind CSS / CSS3 (Backdrop-filter) |
 | **Library** | hangul-js (한글 자소 분리) |
 | **Deployment** | Vercel |
+
+## 기능
+
+ 오타율, 타수 확인 가능
+ .txt파일 업로드 가능
